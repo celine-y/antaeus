@@ -22,8 +22,9 @@ class BillingService(
         val invoices = invoiceService.fetchPendingInvoices()
 
         for (invoice in invoices) {
-            if (charge(invoice) != null) {
-                chargedInvoices.add(invoice)
+            val chargedInvoice = charge(invoice)
+            if (chargedInvoice != null) {
+                chargedInvoices.add(chargedInvoice)
             }
         }
         return chargedInvoices
@@ -42,14 +43,19 @@ class BillingService(
         try {
             if (paymentProvider.charge(invoice)) {
                 return updateStatusToPaid(invoice)
+            } else {
+                return updateStatusToError(invoice)
             }
         } catch (e: CurrencyMismatchException) {
 //            TODO: currency conversion
             logger.error(e.localizedMessage)
+            updateStatusToError(invoice)
         } catch (e: CustomerNotFoundException) {
             logger.error(e.localizedMessage)
+            updateStatusToError(invoice)
         } catch (e: NetworkException) {
             logger.error(e.localizedMessage)
+            updateStatusToError(invoice)
         }
         return null
     }
@@ -59,7 +65,7 @@ class BillingService(
     }
 
     private fun updateStatusToError(invoice: Invoice): Invoice? {
-
+        return dal.updateInvoiceStatus(invoice.id, InvoiceStatus.ERROR)
     }
 }
 
