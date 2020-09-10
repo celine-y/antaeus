@@ -22,6 +22,7 @@ class BillingService(
         val invoices = invoiceService.fetchPendingInvoices()
 
         for (invoice in invoices) {
+//            TODO: optimize
             val chargedInvoice = charge(invoice)
             if (chargedInvoice != null) {
                 chargedInvoices.add(chargedInvoice)

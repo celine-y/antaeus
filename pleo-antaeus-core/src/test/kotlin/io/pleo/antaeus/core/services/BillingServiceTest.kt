@@ -2,6 +2,7 @@ package io.pleo.antaeus.core.services
 
 import io.mockk.every
 import io.mockk.mockk
+import io.pleo.antaeus.core.exceptions.CustomerNotFoundException
 import io.pleo.antaeus.core.external.PaymentProvider
 import io.pleo.antaeus.data.AntaeusDal
 import io.pleo.antaeus.models.Currency
@@ -65,6 +66,35 @@ class BillingServiceTest {
 
         val paymentProvider = mockk<PaymentProvider> {
             every { charge(invoice) } returns false
+        }
+
+        val billingService = BillingService(
+                dal,
+                paymentProvider,
+                invoiceService
+        )
+
+        val updatedInvoice = billingService.charge(1)
+        if (updatedInvoice != null) {
+            assertEquals(InvoiceStatus.ERROR, updatedInvoice.status)
+        }
+    }
+
+    @Test
+    fun `will return invoice with ERROR status when payment provider throws CustomerNotFoundException`() {
+        val invoice = invoiceList.first()
+        val invoiceError = invoice.copy(status = InvoiceStatus.ERROR)
+
+        val dal = mockk<AntaeusDal>{
+            every { updateInvoiceStatus(invoice.id, InvoiceStatus.ERROR) } returns invoiceError
+        }
+
+        val invoiceService = mockk<InvoiceService> {
+            every { fetch(invoice.id) } returns invoice
+        }
+
+        val paymentProvider = mockk<PaymentProvider> {
+            every { charge(invoice) } throws CustomerNotFoundException(invoice.customerId)
         }
 
         val billingService = BillingService(
